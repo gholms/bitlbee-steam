@@ -85,8 +85,12 @@ MACRO_CHECK([PKG_CHECK_MODULES], [pkg-config])
 MACRO_CHECK([PKG_CHECK_VAR],     [pkg-config])
 
 AM_PATH_LIBGCRYPT([1.5.0])
-PKG_CHECK_MODULES([GLIB],    [glib-2.0 >= 2.32.0])
-PKG_CHECK_MODULES([BITLBEE], [bitlbee  >= 3.2.2])
+PKG_CHECK_MODULES([GLIB],       [glib-2.0      >= 2.32.0])
+PKG_CHECK_MODULES([PROTOBUF_C], [libprotobuf-c >= 1.0.0])
+PKG_CHECK_MODULES([ZLIB],       [zlib])
+PKG_CHECK_MODULES([BITLBEE],    [bitlbee])
+
+AC_CHECK_PROGS([PROTOC_C], [protoc-c])
 
 AS_IF(
     [test -z "$plugindir"],

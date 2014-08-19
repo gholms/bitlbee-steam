@@ -23,7 +23,7 @@
 #include <bitlbee.h>
 #include <glib.h>
 
-#include "steam-api.h"
+#include "steam-net.h"
 
 
 /** The main structure for the plugin. **/
@@ -35,8 +35,9 @@ typedef struct _SteamData SteamData;
  **/
 struct _SteamData
 {
-    SteamApi *api;            /** The #SteamApi. **/
     struct im_connection *ic; /** The #im_connection. **/
+
+    SteamNet *net;            /** The #SteamNet. **/
 
     gboolean game_status;     /** The printing of game play statues. **/
     gint     show_playing;    /** The user mode of a #SteamUser in-game. **/

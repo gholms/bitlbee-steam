@@ -16,6 +16,7 @@
  */
 
 #include <string.h>
+#include <zlib.h>
 
 #include "steam-util.h"
 
@@ -38,6 +39,75 @@ gboolean steam_util_debugging(void)
     return debug;
 }
 #endif /* DEBUG_STEAM */
+
+/**
+ * Decodes a #GByteArray with base64 encoding. The returned #GByteArray
+ * should be freed with #g_byte_array_free() when no longer needed.
+ *
+ * @param bytes The base64 encoded string.
+ *
+ * @return The #GByteArray, or NULL on error.
+ **/
+GByteArray *steam_util_bytes_base64_dec(const gchar *base64)
+{
+    GByteArray *ret;
+    guint8     *data;
+    gsize       size;
+
+    g_return_val_if_fail(base64 != NULL, NULL);
+
+    ret  = g_byte_array_new();
+    data = g_base64_decode(base64, &size);
+    g_byte_array_append(ret, data, size);
+
+    return ret;
+}
+
+/**
+ * Encodes a #GByteArray with base64 encoding. The returned string
+ * should be freed with #g_free() when no longer needed.
+ *
+ * @param bytes The #GByteArray.
+ *
+ * @return The base64 encoded string, or NULL on error.
+ **/
+gchar *steam_util_bytes_base64_enc(const GByteArray *bytes)
+{
+    g_return_val_if_fail(bytes != NULL, NULL);
+
+    if (bytes->len < 1)
+        return NULL;
+
+    return g_base64_encode(bytes->data, bytes->len);
+}
+
+/**
+ * XORs two #GByteArrays. The returned #GByteArray should be freed with
+ * #g_byte_array_free() when no longer needed.
+ *
+ * @param b1 The first #GByteArray.
+ * @param b2 The second #GByteArray.
+ *
+ * @return The XORed #GByteArray or NULL on error.
+ **/
+GByteArray *steam_util_bytes_xor(const GByteArray *b1, const GByteArray *b2)
+{
+    GByteArray *ret;
+    gsize       size;
+    guint       i;
+
+    g_return_val_if_fail(b1 != NULL, NULL);
+    g_return_val_if_fail(b2 != NULL, NULL);
+
+    ret  = g_byte_array_new();
+    size = MIN(b1->len, b2->len);
+    g_byte_array_set_size(ret, size);
+
+    for (i = 0; i < size; i++)
+        ret->data[i] = b1->data[i] ^ b2->data[i];
+
+    return ret;
+}
 
 /**
  * Gets the enumerator pointer from its value.
@@ -124,138 +194,66 @@ guint steam_util_enum_val(const SteamUtilEnum *enums, guint def,
 }
 
 /**
- * Unescapes text that has been escaped with XML entities. This has been
- * implemented as there is no g_markup_unescape_text(). The returned
- * string should be freed with #g_free() when no longer needed.
+ * Deflates a #GByteArray. The returned #GByteArray should be freed with
+ * #g_byte_array_free() when no longer needed.
  *
- * @param text The text.
- * @param len  The length of the text, or -1 if NULL-terminated.
- * @param nlen The return location for the return string length or NULL.
+ * @param bytes The #GByteArray.
  *
- * @return The unescaped string or NULL on error.
+ * @return The deflated #GByteArray, or NULL on error.
  **/
-gchar *steam_util_markup_unescape_text(const gchar *text, gssize len,
-                                       gsize *nlen)
-{
-    GString *gstr;
-    gchar   *amp;
-    gchar   *col;
-    gchar   *val;
-    gchar   *end;
-    guint32  chr;
-    guint    i;
-
-    static const gchar *ents[][2] = {
-        {"amp",  "&"},
-        {"apos", "'"},
-        {"gt",   ">"},
-        {"lt",   "<"},
-        {"quot", "\""}
-    };
-
-    g_return_val_if_fail(text != NULL, NULL);
-
-    if (len < 0)
-        len = strlen(text);
-
-    gstr = g_string_new_len(text, len);
-    amp  = gstr->str;
-
-    for (amp = strchr(amp, '&'); amp != NULL; amp = strchr(++amp, '&')) {
-        val = amp + 1;
-        col = strchr(val, ';');
-        chr = 0;
-        end = NULL;
-
-        if ((val[0] == 0) || (col == NULL))
-            break;
-
-        if (val[0] != '#') {
-            for (i = 0; i < G_N_ELEMENTS(ents); i++) {
-                len = strlen(ents[i][0]);
-
-                if (strncmp(val, ents[i][0], len) == 0) {
-                    chr = ents[i][1][0];
-                    end = val + len;
-                    break;
-                }
-            }
-        } else {
-            if (g_ascii_tolower(val[1]) == 'x')
-                chr = g_ascii_strtoull(val + 2, &end, 16);
-            else
-                chr = g_ascii_strtoull(val + 1, &end, 10);
-        }
-
-        /* Ignore Unicode as nothing internal uses it. */
-        if ((end == col) && (chr <= 127)) {
-            g_string_insert_c(gstr, amp - gstr->str, chr);
-            g_string_erase(gstr, val - gstr->str, (col - val) + 2);
-        }
-    }
-
-    if (nlen != NULL)
-        *nlen = gstr->len;
-
-    return g_string_free(gstr, FALSE);
-}
-
-/**
- * Converts a hexadecimal string to a #GByteArray. The returned
- * #GByteArray should be freed with #g_byte_array_free() when no
- * longer needed.
- *
- * @param str The hexadecimal string.
- *
- * @return The #GByteArray or NULL on error.
- **/
-GByteArray *steam_util_str_hex2bytes(const gchar *str)
+GByteArray *steam_util_gzip_def(const GByteArray *bytes)
 {
     GByteArray *ret;
-    gboolean    hax;
-    gsize       size;
-    gchar       val;
-    guint       i;
-    guint       d;
+    gsize       rize;
+    gint        res;
 
-    g_return_val_if_fail(str != NULL, NULL);
+    ret  = g_byte_array_new();
+    rize = compressBound(bytes->len);
 
-    size = strlen(str);
-    hax  = (size % 2) != 0;
+    g_byte_array_set_size(ret, rize);
+    res = compress(ret->data, &rize, bytes->data, bytes->len);
 
-    ret = g_byte_array_new();
-    g_byte_array_set_size(ret, (size + 1) / 2);
-    memset(ret->data, 0, ret->len);
-
-    for (d = i = 0; i < size; i++, hax = !hax) {
-        val = g_ascii_xdigit_value(str[i]);
-
-        if (val < 0) {
-            g_byte_array_free(ret, TRUE);
-            return NULL;
-        }
-
-        if (hax)
-            ret->data[d++] |= val & 0x0F;
-        else
-            ret->data[d] |= (val << 4) & 0xF0;
+    if (res != Z_OK) {
+        g_byte_array_free(ret, TRUE);
+        return NULL;
     }
+
+    g_warn_if_fail(rize <= ret->len);
+    g_byte_array_set_size(ret, rize);
 
     return ret;
 }
 
 /**
- * Compare two strings case insensitively. This is useful for where
- * the return value must be a boolean, such as with a #GEqualFunc.
+ * Inflates a #GByteArray. The returned #GByteArray should be freed with
+ * #g_byte_array_free() when no longer needed.
  *
- * @param s1 The first string.
- * @param s2 The second string.
+ * @param bytes The #GByteArray.
+ * @param size  The inflated size.
  *
- * @return TRUE if the strings are equal, otherwise FALSE.
+ * @return The inflated #GByteArray, or NULL on error.
  **/
-gboolean steam_util_str_iequal(const gchar *s1, const gchar *s2)
+GByteArray *steam_util_gzip_inf(const GByteArray *bytes, gsize size)
 {
-    return g_ascii_strcasecmp(s1, s2) == 0;
+    GByteArray *ret;
+    gsize       rize;
+    gint        res;
+
+    ret = g_byte_array_new();
+    g_byte_array_set_size(ret, size);
+
+    rize = ret->len;
+    res  = uncompress(ret->data, &rize, bytes->data, bytes->len);
+
+    if (res != Z_OK) {
+        g_byte_array_free(ret, TRUE);
+        return NULL;
+    }
+
+    g_warn_if_fail(rize <= ret->len);
+    g_byte_array_set_size(ret, rize);
+
+    return ret;
 }
 
 /**
@@ -328,45 +326,4 @@ gchar *steam_util_time_since_utc(gint64 timestamp)
         spn = -spn;
 
     return steam_util_time_span_str(spn);
-}
-
-/**
- * Find the first occurrence of a character in a string not contained
- * inside quotes (single or double).
- *
- * @param str The string.
- * @param chr The character.
- *
- * @return A pointer to the character, or NULL if it was not found.
- **/
-gchar *steam_util_ustrchr(const gchar *str, gchar chr)
-{
-    gchar  qc;
-    gsize  ssz;
-    gsize  cs;
-    gsize  i;
-    gssize j;
-
-    if (G_UNLIKELY(str == NULL))
-        return NULL;
-
-    ssz = strlen(str);
-
-    for (qc = i = 0; i < ssz; i++) {
-        if ((qc == 0) && (str[i] == chr))
-            return (gchar *) str + i;
-
-        if ((str[i] != '"') && (str[i] != '\''))
-            continue;
-
-        if ((qc != 0) && (str[i] != qc))
-            continue;
-
-        for (cs = 0, j = i - 1; (j >= 0) && (str[j] == '\\'); j--, cs++);
-
-        if ((cs % 2) == 0)
-            qc = (qc == 0) ? str[i] : 0;
-    }
-
-    return NULL;
 }

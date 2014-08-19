@@ -1,7 +1,7 @@
-The Steam protocol plugin for bitlbee. This plugin uses the Steam Mobile
-API allowing it to run alongside the main Steam client. It is worth
-noting that the Steam Mobile API is HTTP based, which does lead to mild
-latency.
+The Steam protocol plugin for bitlbee. This plugin was made possible by
+the SteamKit project: https://github.com/SteamRE/SteamKit. The SteamKit
+project provides a fully reverse engineered Steam client as well as the
+Protobuf files.
 
 Building and Installing:
   Make sure bitlbee and its headers have been installed. If bitlbee came

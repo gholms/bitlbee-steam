@@ -39,7 +39,8 @@
 #define STEAM_UTIL_DEBUGLN(f, ...)
 #endif /* DEBUG_STEAM */
 
-#define STEAM_UTIL_ENUM_NULL {0, NULL}
+#define STEAM_UTIL_ARR_SIZE(arr) (G_N_ELEMENTS(arr) * sizeof arr[0])
+#define STEAM_UTIL_ENUM_NULL     {0, NULL}
 
 
 /** The structure for holding value/pointer pairs for enumerators. **/
@@ -72,6 +73,12 @@ struct _SteamUtilTimeSpan
 gboolean steam_util_debugging(void);
 #endif /* DEBUG_STEAM */
 
+GByteArray *steam_util_bytes_base64_dec(const gchar *base64);
+
+gchar *steam_util_bytes_base64_enc(const GByteArray *bytes);
+
+GByteArray *steam_util_bytes_xor(const GByteArray *b1, const GByteArray *b2);
+
 gpointer steam_util_enum_ptr(const SteamUtilEnum *enums, gpointer def,
                              guint val);
 
@@ -80,18 +87,12 @@ gpointer *steam_util_enum_ptrs(const SteamUtilEnum *enums, guint vals);
 guint steam_util_enum_val(const SteamUtilEnum *enums, guint def,
                           gconstpointer ptr, GCompareFunc cmpfunc);
 
-gchar *steam_util_markup_unescape_text(const gchar *text, gssize len,
-                                       gsize *nlen);
+GByteArray *steam_util_gzip_def(const GByteArray *bytes);
 
-GByteArray *steam_util_str_hex2bytes(const gchar *str);
-
-gboolean steam_util_str_iequal(const gchar *s1, const gchar *s2);
+GByteArray *steam_util_gzip_inf(const GByteArray *bytes, gsize size);
 
 gchar *steam_util_time_span_str(GTimeSpan span);
 
 gchar *steam_util_time_since_utc(gint64 timestamp);
-
-gchar *steam_util_ustrchr(const gchar *str, gchar chr);
-
 
 #endif /* _STEAM_UTIL_H */

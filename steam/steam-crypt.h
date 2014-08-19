@@ -22,10 +22,17 @@
 
 #include <glib.h>
 
-GByteArray *steam_crypt_rsa_enc(const GByteArray *mod, const GByteArray *exp,
-                                const GByteArray *bytes);
+#include "steam-id.h"
 
-gchar *steam_crypt_rsa_enc_str(const gchar *mod, const gchar *exp,
-                               const gchar *str);
+
+guint32 steam_crypt_crc32(const GByteArray *bytes);
+
+GByteArray *steam_crypt_rsa_enc(const GByteArray *key, const GByteArray *bytes);
+
+GByteArray *steam_crypt_rsa_enc_univ(SteamIdUniv univ, const GByteArray *bytes);
+
+GByteArray *steam_crypt_sym_dec(const GByteArray *key, const GByteArray *bytes);
+
+GByteArray *steam_crypt_sym_enc(const GByteArray *key, const GByteArray *bytes);
 
 #endif /* _STEAM_CRYPT_H */
